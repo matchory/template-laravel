@@ -25,8 +25,10 @@ to confirm the style tooling is correctly wired up.
 **Pint formats via `--config`, not a merged configuration.** Pint can only load a single
 configuration file per run; it has no mechanism for merging a shared base with local overrides. The
 `fmt` script points `--config` directly at the ruleset shipped in `matchory/coding-style`, which is
-why there is no local `pint.json`: adding one would silently take over from the package's config
-instead of extending it.
+why there is no local `pint.json`: since `fmt` pins `--config` explicitly, a local `pint.json` would
+sit there unused rather than take over. The real drift vector is a bare `vendor/bin/pint` invocation
+or an IDE's Pint integration, which would pick up a local `pint.json` (or none) instead of the
+package's ruleset — another reason to always format through `composer fmt`.
 
 **PHPStan's rulesets are included, its extensions auto-discovered.** `phpstan.neon` pulls in the
 package's Laravel, Pest, and complexity rulesets under `includes:`. `matchory/coding-style` also ships
@@ -40,15 +42,22 @@ every auto-discovered extension's config after the `includes:` list but before t
 by package name, not by anything a consumer controls such as require order or install time. Because
 `tomasvotruba/cognitive-complexity` sorts after `matchory/coding-style`, its own defaults would
 silently win over whatever threshold the shared package tries to set, so the threshold has to be
-restated locally to take effect. `phpstan.neon` keeps `level`, `paths`, and `cognitive_complexity`
-local for this reason; everything else comes from the shared package.
+restated locally to take effect. `phpstan.neon` keeps `cognitive_complexity` local for that reason;
+`level` and `paths` are local too, but simply because they're per-project decisions. Everything else
+comes from the shared package.
 
-**Rector builds on the shared Laravel preset,** extended with this project's own paths and a cache
+**Rector builds on the shared Laravel preset**, extended with this project's own paths and a cache
 directory, in `rector.php`.
+
+**`.editorconfig` is a synced copy, not authored here.** It's distributed by copy from
+`matchory/coding-style` because EditorConfig has no mechanism for extending a file shipped inside a
+package. Refresh it with `composer style:sync` if it ever drifts from the canonical version; never
+hand-edit it.
 
 **`composer style:verify` is the acceptance test.** It doesn't just check that the style package is a
 dependency; it checks that this repository actually consumes it the way it's meant to be consumed. CI
-runs it on every push, and it's worth running locally after touching any of the files above.
+runs it on every push to `main` and on every pull request, and it's worth running locally after
+touching any of the files above.
 
 ## Commands
 
@@ -58,6 +67,7 @@ composer fmt:test      # check formatting without changing files
 composer analyze       # run PHPStan
 composer rector        # apply Rector refactorings
 composer test          # run the Pest suite
+composer style:sync    # refresh synced style files (e.g. .editorconfig) from the shared package
 composer style:verify  # verify the style tooling is correctly wired up
 ```
 
