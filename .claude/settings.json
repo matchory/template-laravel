@@ -3,10 +3,11 @@
         "allow": [
             "Bash(composer fmt)",
             "Bash(composer fmt:test)",
-            "Bash(composer lint)",
+            "Bash(composer analyze)",
             "Bash(composer analyze:ci)",
             "Bash(composer rector:ci)",
             "Bash(composer test)",
+            "Bash(composer style:sync)",
             "Bash(composer style:verify)",
             "Bash(php artisan:*)"
         ]
@@ -18,7 +19,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "composer fmt:pre-commit >/dev/null 2>&1 || true"
+                        "command": "jq -r '.tool_input.file_path // empty' | { read -r file; if [ -n \"$file\" ] && [ \"${file##*.}\" = php ]; then vendor/bin/pint --config vendor/matchory/coding-style/php/pint/base.json \"$file\" >/dev/null 2>&1; fi; }; true"
                     }
                 ]
             }
