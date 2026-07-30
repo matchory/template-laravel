@@ -41,13 +41,17 @@
         "fmt:pre-commit": "@fmt --dirty --repair",
         "lint": "@analyze",
         "analyze": "phpstan analyse --memory-limit=-1",
-        "analyze:ci": "@analyze --no-progress --no-ansi",
+        "analyze:ci": "@analyze --no-progress --ansi",
         "rector": "rector process",
         "rector:ci": "@rector --dry-run --no-progress-bar",
         "test": "pest",
         "test:ci": "@test --colors=always",
         "style:sync": "matchory-coding-style sync",
-        "style:verify": "matchory-coding-style verify --strict"
+        "style:verify": "matchory-coding-style verify --strict",
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ]
     },
     "minimum-stability": "stable",
     "prefer-stable": true
