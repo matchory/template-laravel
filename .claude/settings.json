@@ -1,0 +1,27 @@
+{
+    "permissions": {
+        "allow": [
+            "Bash(composer fmt)",
+            "Bash(composer fmt:test)",
+            "Bash(composer lint)",
+            "Bash(composer analyze:ci)",
+            "Bash(composer rector:ci)",
+            "Bash(composer test)",
+            "Bash(composer style:verify)",
+            "Bash(php artisan:*)"
+        ]
+    },
+    "hooks": {
+        "PostToolUse": [
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "composer fmt:pre-commit >/dev/null 2>&1 || true"
+                    }
+                ]
+            }
+        ]
+    }
+}
