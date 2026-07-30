@@ -1,0 +1,17 @@
+includes:
+    - vendor/matchory/coding-style/php/phpstan/laravel.neon
+    - vendor/matchory/coding-style/php/phpstan/pest.neon
+    - vendor/matchory/coding-style/php/phpstan/complexity.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+        - tests
+
+    # Must be declared here. PHPStan merges auto-discovered extension configs after every `includes:`
+    # but before this file's own `parameters`, and tomasvotruba/cognitive-complexity sorts after
+    # matchory/coding-style — so a value shipped by the package is discarded without warning.
+    cognitive_complexity:
+        class: 50
+        function: 15
