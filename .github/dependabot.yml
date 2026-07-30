@@ -1,0 +1,40 @@
+# Grouped per ecosystem so one upstream release does not arrive as several pull requests.
+#
+# The five-day cooldown is a supply-chain control, not a convenience. Most malicious releases in recent
+# memory were detected and yanked within hours, so waiting before adopting a new version neutralises
+# that class of attack. Security updates are unaffected: they are driven by advisories and ignore this.
+
+version: 2
+
+multi-ecosystem-groups:
+  app:
+    schedule:
+      interval: weekly
+  github-actions:
+    schedule:
+      interval: weekly
+
+updates:
+  - package-ecosystem: composer
+    multi-ecosystem-group: app
+    directory: /
+    patterns:
+      - '*'
+    allow:
+      - dependency-type: all
+    cooldown:
+      default-days: 5
+    labels:
+      - dependencies
+
+  # Every action is pinned to a full commit SHA and a CI job fails the build if any is not. Dependabot
+  # understands SHA pins and bumps them with the version comment intact.
+  - package-ecosystem: github-actions
+    multi-ecosystem-group: github-actions
+    directory: /
+    patterns:
+      - '*'
+    cooldown:
+      default-days: 5
+    labels:
+      - dependencies
