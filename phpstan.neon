@@ -7,7 +7,12 @@ parameters:
     level: 5
     paths:
         - app
+        - routes
         - tests
+
+    # base.neon deliberately omits this so each consumer places it somewhere gitignored; Pint and
+    # Rector already cache under .cache/.
+    tmpDir: .cache/phpstan
 
     # Must be declared here. PHPStan merges auto-discovered extension configs after every `includes:`
     # but before this file's own `parameters`, and tomasvotruba/cognitive-complexity sorts after
