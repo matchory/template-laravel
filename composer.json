@@ -35,6 +35,20 @@
         },
         "sort-packages": true
     },
+    "scripts": {
+        "fmt": "pint --config vendor/matchory/coding-style/php/pint/base.json --parallel --cache-file=./.cache/pint.json",
+        "fmt:test": "@fmt --test",
+        "fmt:pre-commit": "@fmt --dirty --repair",
+        "lint": "@analyze",
+        "analyze": "phpstan analyse --memory-limit=-1",
+        "analyze:ci": "@analyze --no-progress --no-ansi",
+        "rector": "rector process",
+        "rector:ci": "@rector --dry-run --no-progress-bar",
+        "test": "pest",
+        "test:ci": "@test --colors=always",
+        "style:sync": "matchory-coding-style sync",
+        "style:verify": "matchory-coding-style verify --strict"
+    },
     "minimum-stability": "stable",
     "prefer-stable": true
 }
