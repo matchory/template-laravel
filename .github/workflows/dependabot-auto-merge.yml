@@ -1,0 +1,91 @@
+name: Dependabot auto-merge
+
+# Merges Dependabot's minor, patch and security pull requests once every check on them has passed, so
+# the template stays current without anyone clicking through routine bumps. Majors are left alone: the
+# supply chain baseline never groups them, so each arrives as its own pull request for a human to review.
+#
+# Why a schedule and not `on: pull_request`: a run triggered by Dependabot only sees Dependabot secrets,
+# and GITHUB_TOKEN can neither approve a pull request (the org policy "Allow GitHub Actions to create and
+# approve pull requests" is off) nor satisfy the org ruleset's required review. A scheduled run sees the
+# org's Actions secrets, so it can mint a token from the gh-actions-token-provider app, whose approval
+# counts as a review. It also picks pull requests up again after Dependabot rebases them.
+#
+# Nothing here checks out or runs repository code. The pull request's own CI is what vouches for it.
+
+on:
+  schedule:
+    # Every two hours on weekdays. Dependabot opens its pull requests Monday 05:00 Europe/Berlin.
+    - cron: '17 */2 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  merge:
+    name: Merge passing Dependabot pull requests
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AUTH_APP_ID }}
+          private-key: ${{ secrets.GH_AUTH_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-checks: read
+
+      - name: Approve and merge
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          numbers="$(gh pr list --author 'app/dependabot' --state open --json number,isDraft \
+            --jq '.[] | select(.isDraft | not) | .number')"
+
+          for number in ${numbers}; do
+            head="$(gh pr view "${number}" --json headRefOid --jq .headRefOid)"
+
+            # Only Dependabot's own, GitHub-signed commits. If anyone pushed to the branch, it is no
+            # longer a routine bump and needs a human review.
+            foreign="$(gh api "repos/${GH_REPO}/pulls/${number}/commits" --paginate \
+              --jq '.[] | select(.author.login != "dependabot[bot]" or (.commit.verification.verified | not)) | .sha')"
+            if [ -n "${foreign}" ]; then
+              echo "::notice::#${number}: has commits not authored and signed by Dependabot, skipping"
+              continue
+            fi
+
+            # Dependabot records every update in the commit message as `update-type: version-update:semver-*`.
+            message="$(gh api "repos/${GH_REPO}/commits/${head}" --jq .commit.message)"
+            if ! grep -q 'update-type: version-update:semver-' <<< "${message}"; then
+              echo "::notice::#${number}: no Dependabot update metadata, skipping"
+              continue
+            fi
+            if grep -q 'update-type: version-update:semver-major' <<< "${message}"; then
+              echo "::notice::#${number}: contains a major update, leaving it for review"
+              continue
+            fi
+
+            # Every check must have finished and passed; an empty list means CI has not started yet.
+            buckets="$(gh pr checks "${number}" --json bucket --jq '[.[].bucket] | unique | join(",")' || true)"
+            case "${buckets}" in
+              pass|pass,skipping|skipping,pass) ;;
+              *)
+                echo "::notice::#${number}: checks are '${buckets:-none}', skipping"
+                continue
+                ;;
+            esac
+
+            if [ "$(gh pr view "${number}" --json reviewDecision --jq .reviewDecision)" != 'APPROVED' ]; then
+              gh pr review "${number}" --approve --body 'Minor, patch or security update with passing checks; approved by the Dependabot auto-merge workflow.'
+            fi
+            if ! gh pr merge "${number}" --squash --match-head-commit "${head}"; then
+              echo "::warning::#${number}: merge failed, will retry on the next run"
+            fi
+          done
