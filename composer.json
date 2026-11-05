@@ -33,6 +33,9 @@
             "pestphp/pest-plugin": true,
             "phpstan/extension-installer": true
         },
+        "audit": {
+            "abandoned": "report"
+        },
         "sort-packages": true
     },
     "scripts": {
